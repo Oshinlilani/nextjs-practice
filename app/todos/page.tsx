@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 
 export default function Todos() {
-  const [todos, setTodos] = useState<string[]>([]);
+  interface Todo {
+    id: number;
+    title: string;
+    completed: boolean;
+  }
+
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -30,12 +36,18 @@ export default function Todos() {
     if (editingIndex !== null) {
       // We are editing an existing todo
       const newTodos = [...todos];
-      newTodos[editingIndex] = inputValue.trim();
+      newTodos[editingIndex] = {
+        ...newTodos[editingIndex],
+        title: inputValue.trim(),
+      };
       setTodos(newTodos);
       setEditingIndex(null); // Reset edit state
     } else {
       // We are adding a new todo
-      setTodos([...todos, inputValue.trim()]);
+      setTodos([
+        ...todos,
+        { id: Date.now(), title: inputValue.trim(), completed: false },
+      ]);
     }
     setInputValue("");
   };
@@ -54,13 +66,23 @@ export default function Todos() {
   // 2. Fixed Edit: Triggers when the "Edit" button next to a todo is clicked
   const startEdit = (index: number) => {
     setEditingIndex(index);
-    setInputValue(todos[index]);
+    setInputValue(todos[index].title);
   };
 
   // Prevent server/client HTML mismatches during Next.js hydration
   if (!isLoaded) {
-    return <div className="flex justify-center items-center p-4">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center p-4">Loading...</div>
+    );
   }
+
+  const handleToggle = (id: number) => {
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo,
+    );
+
+    setTodos(updatedTodos);
+  };
 
   return (
     <div className="flex flex-col justify-center items-center p-4">
@@ -81,28 +103,45 @@ export default function Todos() {
         </button>
       </div>
 
-      <ul className="list-disc w-64">
-        {todos.length === 0 ? 
-        (<p className="text-gray-500">No tasks added yet...</p>) : 
-        (todos.map((todo, index) => (
-          <li key={index} className="flex justify-between items-center mb-2">
-            <span>{todo}</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => startEdit(index)}
-                className="bg-yellow-500 text-white p-1 text-xs rounded"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(index)}
-                className="bg-red-500 text-white p-1 text-xs rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </li> )
-        ))}
+      <ul className="w-64">
+        {todos.length === 0 ? (
+          <p className="text-gray-500">No tasks added yet...</p>
+        ) : (
+          todos.map((todo, index) => (
+            <li
+              key={todo.id}
+              className="flex justify-between items-center mb-2"
+            >
+              <div className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => handleToggle(todo.id)}
+                />
+                <span
+                  className={todo.completed ? "line-through text-gray-400" : ""}
+                >
+                  {todo.title}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startEdit(index)}
+                  className="bg-yellow-500 text-white p-1 text-xs rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(index)}
+                  className="bg-red-500 text-white p-1 text-xs rounded"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );
